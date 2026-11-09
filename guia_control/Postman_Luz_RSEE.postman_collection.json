@@ -1,0 +1,51 @@
+{
+  "info": {
+    "name": "Luz CONTRASTECH RSEE - CH1",
+    "description": "Requires postman_bridge.py running on this PC. GET reads only. POST changes real brightness. The device speaks raw TCP; HTTP is provided by this local Python adapter.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://127.0.0.1:8765"
+    },
+    {
+      "key": "brightness",
+      "value": "125"
+    }
+  ],
+  "item": [
+    {
+      "name": "Leer brillo CH1",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{base_url}}/brightness",
+        "description": "Reads SA#; does not change brightness."
+      }
+    },
+    {
+      "name": "Cambiar brillo CH1",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"brightness\": {{brightness}}\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": "{{base_url}}/brightness",
+        "description": "Changes real brightness (0-255) and verifies with readback. Adjust the collection variable brightness before Send."
+      }
+    }
+  ]
+}

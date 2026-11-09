@@ -1,0 +1,23 @@
+# Investigación histórica, capturas y configuración del equipo
+investigacion_local/
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+.env.*
+*.pcap
+*.pcapng
+*.bin
+*.exe
+*.rar
+*.zip
+# Resultados generados por los scripts
+operation_*.json
+ip_backup_*/
+postman_bridge_runtime.json
+# Editor y sistema
+.vscode/
+.idea/
+Thumbs.db
+Desktop.ini
