@@ -1,10 +1,12 @@
 # Constratech / RSEE
 
-Herramientas Python para controlar el brillo CH1 por Ethernet en el controlador CONTRASTECH/RSEE estudiado. Incluye lectura, ajuste con verificación, rampas, puente HTTP local para Postman y respaldo/cambio de IP del módulo USR.
+Herramientas para controlar el controlador CONTRASTECH/RSEE por USB/RS232 con PowerShell y por Ethernet con Python. Incluye brillo con verificación, modos High/Low por RS232, rampas, demostración de subida/bajada, puente HTTP local para CH1 por Ethernet y respaldo/cambio de IP del módulo USR. CH1 se confirmó en el equipo; CH2 está implementado según el manual, pero no respondió en la prueba real.
+
+Para la conexión USB actual, empieza por la [guía completa de control RS232](guia_control/CONTROL_RS232.md).
 
 ## Instalación
 
-Se requiere Python 3. Las herramientas utilizan únicamente la biblioteca estándar; no hay paquetes externos que instalar. El cambio de IP utiliza `SendARP` de Windows. Para los comandos de brillo se necesita acceso TCP al equipo y una IP local configurada en su subred.
+RS232 requiere Windows PowerShell 5.1 y un adaptador USB-RS232 con su controlador instalado; no requiere Python. Las herramientas Ethernet requieren Python 3 y utilizan únicamente la biblioteca estándar; no hay paquetes externos que instalar. El cambio de IP utiliza `SendARP` de Windows. Para los comandos Ethernet se necesita acceso TCP al equipo y una IP local configurada en su subred.
 
 ```powershell
 git clone git@github.com:yuchuariRBO/contrastech.git
@@ -47,6 +49,44 @@ python guia_control/rsee_control.py --host 192.168.1.253 --local-ip 192.168.1.24
 ```
 
 `set`, `ramp` y `random-demo` modifican la iluminación real. Los valores admitidos son enteros entre 0 y 255. Cada operación genera un JSON local `operation_*.json`, excluido de Git; `--log` permite elegir otra ruta. Ante un error, el programa se detiene sin reintentar la escritura. Una interrupción de la demostración puede dejar el último brillo aplicado.
+
+## Control RS232 por USB en Windows
+
+`guia_control/rsee_serial.ps1` utiliza la biblioteca serie de Windows, sin paquetes adicionales. Configura el adaptador a **19200 8N1**, sin control de flujo, y transmite ASCII sin CR/LF, según la página 5 del manual V2022.
+
+El 10 de noviembre de 2026 se confirmó CH1 por **COM8**: lectura inicial 255, ajuste a 250 y restauración a 255, ambos con acuse `A` y lectura de verificación. COM4, COM5 y COM7 no respondieron a `SA#` durante esa prueba. Los números COM pueden cambiar al reconectar el adaptador.
+
+Desde la raíz del repositorio, consultar sin cambiar la iluminación:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File guia_control/rsee_serial.ps1 -Port COM8 -Action read
+```
+
+Ajustar CH1 y verificar el valor leído:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File guia_control/rsee_serial.ps1 -Port COM8 -Action set -Value 125
+```
+
+Cambiar modo High/Low (ajuste del controlador, sin `-Channel`):
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File guia_control/rsee_serial.ps1 -Port COM8 -Action high
+powershell -NoProfile -ExecutionPolicy Bypass -File guia_control/rsee_serial.ps1 -Port COM8 -Action low
+```
+
+Cada línea cambia el modo: ejecuta la que necesites. High enciende sin señal de disparo y apaga con señal; Low apaga sin señal y enciende mientras la señal esté activa. No equivalen a brillo máximo/mínimo.
+
+Rampa y demostración de un ciclo:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File guia_control/rsee_serial.ps1 -Port COM8 -Action ramp -Channel A -Value 100 -Step 10 -IntervalMs 200
+powershell -NoProfile -ExecutionPolicy Bypass -File guia_control/rsee_serial.ps1 -Port COM8 -Action demo -Channel A -Minimum 150 -Maximum 250 -Step 25 -IntervalMs 500
+```
+
+`set` y `ramp` modifican la iluminación real y dejan el objetivo aplicado; `demo` regresa al valor inicial si termina correctamente. El script lee antes de escribir brillo y comprueba el acuse y la lectura posterior; ante un fallo se detiene sin reintentar ni restaurar automáticamente. High/Low se comprueban por acuse, sin consulta independiente del modo. Las operaciones guardan las tramas y el resultado en `guia_control/operation_serial_*.json`, excluido de Git. `-Log` permite elegir el archivo. Una interrupción puede dejar el último ajuste aplicado y no guardar el registro.
+
+`-Channel B` dirige las operaciones de brillo a CH2 según el manual; su lectura se intentó sin respuesta. Si falla esa lectura inicial, no se escribe el canal. Las acciones de brillo no cambian el modo de disparo. No se modifica la configuración Ethernet. [Guía, protocolo y solución de problemas](guia_control/CONTROL_RS232.md). [Evidencia de la prueba RS232](docs/PRUEBA_RS232.md).
 
 ## Postman
 
@@ -91,6 +131,7 @@ python -m compileall -q guia_control
 python guia_control/rsee_control.py --help
 python guia_control/rsee_ip.py --help
 python guia_control/postman_bridge.py --help
+powershell -NoProfile -ExecutionPolicy Bypass -File guia_control/test_rsee_serial.ps1
 ```
 
-Las comprobaciones de preparación del repositorio no operan el equipo. Los resultados de hardware descritos en los documentos son históricos; no acreditan el estado actual ni la persistencia del brillo después de apagar el controlador.
+Las comprobaciones anteriores no operan el equipo; las pruebas RS232 utilizan un dispositivo simulado. Los resultados de hardware descritos en los documentos son históricos; no acreditan el estado actual ni la persistencia del brillo después de apagar el controlador.
